@@ -8,8 +8,13 @@ import (
 	"regexp"
 )
 
+type file struct {
+	Path       string
+	TargetPath string
+}
+
 type config struct {
-	Files         []string
+	Files         []file
 	VariableRegex string
 	RegexGroup    int
 }
@@ -31,8 +36,13 @@ func loadConfig(path string) (*config, error) {
 	return &config, nil
 }
 
-func filterFile(path string, regex regexp.Regexp, regexGroup int) error {
-	data, err := os.ReadFile(path)
+func filterFile(file file, regex regexp.Regexp, regexGroup int) error {
+	data, err := os.ReadFile(file.Path)
+	if err != nil {
+		return err
+	}
+
+	stat, err := os.Stat(file.Path)
 	if err != nil {
 		return err
 	}
@@ -41,11 +51,13 @@ func filterFile(path string, regex regexp.Regexp, regexGroup int) error {
 
 	text = regex.ReplaceAllStringFunc(text, func(s string) string {
 		matches := regex.FindStringSubmatch(text)
-		log.Println(matches)
 		return os.Getenv(matches[regexGroup])
 	})
 
-	log.Println(text)
+	err = os.WriteFile(file.TargetPath, []byte(text), stat.Mode())
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
