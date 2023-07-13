@@ -14,9 +14,10 @@ type file struct {
 }
 
 type config struct {
-	Files         []file
-	VariableRegex string
-	RegexGroup    int
+	Files          []file
+	VariableRegex  string
+	RegexGroup     int
+	ForceOverwrite bool
 }
 
 var defaultVariableRegex = `\$\{([a-zA-Z0-9_-]+)\}`
@@ -62,6 +63,19 @@ func filterFile(file file, regex regexp.Regexp, regexGroup int) error {
 	return nil
 }
 
+func fileExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+
+	return false, err
+}
+
 func filterFiles(config config) error {
 	var regexString string
 	if len(config.VariableRegex) == 0 {
@@ -85,7 +99,19 @@ func filterFiles(config config) error {
 	}
 
 	for _, file := range config.Files {
-		log.Println("Filtering file:", file)
+		if !config.ForceOverwrite {
+			exists, err := fileExists(file.TargetPath)
+			if err != nil {
+				return err
+			}
+
+			if exists {
+				log.Println("Skipping file:", file.Path, "->", file.TargetPath, "(already exists)")
+				continue
+			}
+		}
+
+		log.Println("Filtering file:", file.Path, "->", file.TargetPath)
 		err := filterFile(file, *regex, regexGroup)
 		if err != nil {
 			return err
@@ -97,12 +123,15 @@ func filterFiles(config config) error {
 
 func main() {
 	configPath := flag.String("config", "config.json", "Path to config file")
+	force := flag.Bool("force", false, "Forcibly overwrite existing files (equivalent to setting forceOverwrite to true in the config)")
 	flag.Parse()
 
 	config, err := loadConfig(*configPath)
 	if err != nil {
 		log.Fatalln("Failed to load config:", err)
 	}
+
+	config.ForceOverwrite = config.ForceOverwrite || *force
 
 	err = filterFiles(*config)
 	if err != nil {
