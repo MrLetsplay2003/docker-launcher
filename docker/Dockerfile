@@ -1,4 +1,4 @@
-FROM golang:latest
+FROM golang:latest AS builder
 
 ARG UID=1000
 ARG GID=1000
@@ -14,4 +14,10 @@ RUN chown -Rv bobthebuilder:bobthebuilder /workspace
 USER bobthebuilder
 WORKDIR /workspace
 
-CMD [ "go", "build", "-o", "/build/docker_launcher", "." ]
+RUN [ "go", "build", "-o", "/build/docker_launcher", "." ]
+
+FROM alpine:latest
+
+COPY --from=builder /build/docker_launcher /usr/local/bin/docker_launcher
+
+ENTRYPOINT [ "/usr/local/bin/docker_launcher" ]
