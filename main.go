@@ -171,7 +171,7 @@ func updateGID(config config) error {
 		return nil
 	}
 
-	log.Println("Updating GID of user", config.Group)
+	log.Println("Updating GID of group", config.Group)
 	cmd := exec.Command("groupmod", "-g", newGID, config.Group)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -233,6 +233,7 @@ func main() {
 	command := flag.Args()
 	log.Println(">", strings.Join(command, " "))
 	cmd := exec.Command(command[0], command[1:]...)
+	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
