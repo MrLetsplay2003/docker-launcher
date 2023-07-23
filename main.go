@@ -28,6 +28,8 @@ type config struct {
 	UpdateGID   bool
 	Group       string
 	GIDVariable string
+
+	RunBefore [][]string
 }
 
 const defaultVariableRegex = `\$\{([a-zA-Z0-9_-]+)\}`
@@ -145,7 +147,11 @@ func updateUID(config config) error {
 		return nil
 	}
 
-	err := exec.Command("usermod", "-u", newUID, config.User).Run()
+	log.Println("Updating UID of user", config.User)
+	cmd := exec.Command("usermod", "-u", newUID, config.User)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
 	if err != nil {
 		return err
 	}
@@ -165,7 +171,11 @@ func updateGID(config config) error {
 		return nil
 	}
 
-	err := exec.Command("groupmod", "-g", newGID, config.Group).Run()
+	log.Println("Updating GID of user", config.Group)
+	cmd := exec.Command("groupmod", "-g", newGID, config.Group)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
 	if err != nil {
 		return err
 	}
@@ -195,7 +205,6 @@ func main() {
 	}
 
 	if config.UpdateUID {
-		log.Println("Updating UID")
 		err = updateUID(*config)
 		if err != nil {
 			log.Fatalln(err)
@@ -203,8 +212,19 @@ func main() {
 	}
 
 	if config.UpdateGID {
-		log.Println("Updating GID")
 		err = updateGID(*config)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
+
+	for _, command := range config.RunBefore {
+		log.Println(">", strings.Join(command, " "))
+		cmd := exec.Command(command[0], command[1:]...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		err = cmd.Run()
 		if err != nil {
 			log.Fatalln(err)
 		}
