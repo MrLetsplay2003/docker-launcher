@@ -1,9 +1,11 @@
-FROM golang:latest AS builder
+FROM golang:1.21-rc-alpine AS builder
 
 ARG UID=1000
 ARG GID=1000
 
-RUN addgroup --gid ${GID} bobthebuilder && adduser --gid ${GID} --uid ${UID} bobthebuilder
+RUN apk add upx shadow
+
+RUN groupadd --gid ${GID} bobthebuilder && useradd -m --gid ${GID} --uid ${UID} bobthebuilder
 
 RUN mkdir /build
 RUN chown -Rv bobthebuilder:bobthebuilder /build
@@ -14,7 +16,9 @@ RUN chown -Rv bobthebuilder:bobthebuilder /workspace
 USER bobthebuilder
 WORKDIR /workspace
 
-RUN [ "go", "build", "-o", "/build/docker_launcher", "." ]
+RUN [ "go", "build", "-ldflags", "-s -w", "-o", "/build/docker_launcher", "." ]
+
+RUN [ "upx", "/build/docker_launcher" ]
 
 FROM alpine:latest
 

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 userID=$(id -u)
 groupID=$(id -g)
 
